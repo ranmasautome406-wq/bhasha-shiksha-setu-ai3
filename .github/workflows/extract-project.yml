@@ -1,53 +1,48 @@
-name: Extract V0 Project
+name: Fix V0 Project Structure
 
 on:
   workflow_dispatch:
 
 jobs:
-  extract:
+  fix:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
-        shell: bash
+      - name: Fix project structure
         run: |
           set -e
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          echo "Current files:"
+          find . -maxdepth 2 -type f | sort
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "No ZIP file found in repository root."
-            exit 1
+          mkdir -p app
+
+          if [ -f "page.tsx" ]; then
+            mv page.tsx app/page.tsx
           fi
 
-          echo "Found ZIP: $ZIP_FILE"
-
-          rm -rf extracted
-          mkdir extracted
-
-          unzip -q "$ZIP_FILE" -d extracted
-
-          PROJECT_DIR=$(find extracted -mindepth 1 -maxdepth 1 -type d | head -n 1)
-
-          if [ -n "$PROJECT_DIR" ]; then
-            cp -a "$PROJECT_DIR"/. .
-          else
-            cp -a extracted/. .
+          if [ -f "layout.tsx" ]; then
+            mv layout.tsx app/layout.tsx
           fi
 
-          rm -rf extracted
-          rm -f "$ZIP_FILE"
+          if [ -f "globals.css" ]; then
+            mv globals.css app/globals.css
+          fi
 
-          echo "Project extracted successfully."
+          if [ -d "api" ]; then
+            mv api app/api
+          fi
 
-      - name: Commit extracted files
-        shell: bash
+          echo "Final structure:"
+          find app -maxdepth 3 -type f | sort
+
+      - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -55,8 +50,8 @@ jobs:
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No changes."
           else
-            git commit -m "Extract V0 project files"
+            git commit -m "Fix Next.js app structure"
             git push
           fi
